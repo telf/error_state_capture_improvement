@@ -2738,6 +2738,8 @@ static void i915_gem_reset_ring_status(struct drm_i915_private *dev_priv,
 static void i915_gem_reset_ring_cleanup(struct drm_i915_private *dev_priv,
 					struct intel_engine_cs *ring)
 {
+	unsigned long flags;
+
 	while (!list_empty(&ring->active_list)) {
 		struct drm_i915_gem_object *obj;
 
@@ -2753,6 +2755,8 @@ static void i915_gem_reset_ring_cleanup(struct drm_i915_private *dev_priv,
 	 * are the ones that keep the context and ringbuffer backing objects
 	 * pinned in place.
 	 */
+
+	spin_lock_irqsave(&ring->execlist_lock, flags);
 	while (!list_empty(&ring->execlist_queue)) {
 		struct drm_i915_gem_request *submit_req;
 
@@ -2766,6 +2770,7 @@ static void i915_gem_reset_ring_cleanup(struct drm_i915_private *dev_priv,
 
 		i915_gem_request_unreference(submit_req);
 	}
+	spin_unlock_irqrestore(&ring->execlist_lock, flags);
 
 	/*
 	 * We must free the requests after all the corresponding objects have
