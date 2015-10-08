@@ -718,10 +718,10 @@ static void capture_bo(struct drm_i915_error_buffer *err,
 static u32 capture_active_bo(struct drm_i915_error_buffer *err,
 			     int count, struct list_head *head)
 {
-	struct i915_vma *vma;
+	struct i915_vma *vma, *tmpvma;
 	int i = 0;
 
-	list_for_each_entry(vma, head, mm_list) {
+	list_for_each_entry_safe(vma, tmpvma, head, mm_list) {
 		capture_bo(err++, vma);
 		if (++i == count)
 			break;
@@ -734,17 +734,17 @@ static u32 capture_pinned_bo(struct drm_i915_error_buffer *err,
 			     int count, struct list_head *head,
 			     struct i915_address_space *vm)
 {
-	struct drm_i915_gem_object *obj;
+	struct drm_i915_gem_object *obj, *tmpobj;
 	struct drm_i915_error_buffer * const first = err;
 	struct drm_i915_error_buffer * const last = err + count;
 
-	list_for_each_entry(obj, head, global_list) {
-		struct i915_vma *vma;
+	list_for_each_entry_safe(obj, tmpobj, head, global_list) {
+		struct i915_vma *vma, *tmpvma;
 
 		if (err == last)
 			break;
 
-		list_for_each_entry(vma, &obj->vma_list, vma_link)
+		list_for_each_entry_safe(vma, tmpvma, &obj->vma_list, vma_link)
 			if (vma->vm == vm && vma->pin_count > 0)
 				capture_bo(err++, vma);
 	}
@@ -958,13 +958,13 @@ static void i915_gem_record_active_context(struct intel_engine_cs *ring,
 					   struct drm_i915_error_ring *ering)
 {
 	struct drm_i915_private *dev_priv = ring->dev->dev_private;
-	struct drm_i915_gem_object *obj;
+	struct drm_i915_gem_object *obj, *tmpobj;
 
 	/* Currently render ring is the only HW context user */
 	if (ring->id != RCS || !error->ccid)
 		return;
 
-	list_for_each_entry(obj, &dev_priv->mm.bound_list, global_list) {
+	list_for_each_entry_safe(obj, tmpobj, &dev_priv->mm.bound_list, global_list) {
 		if (!i915_gem_obj_ggtt_bound(obj))
 			continue;
 
@@ -979,7 +979,7 @@ static void i915_gem_record_rings(struct drm_device *dev,
 				  struct drm_i915_error_state *error)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
-	struct drm_i915_gem_request *request;
+	struct drm_i915_gem_request *request, *tmpreq;
 	int i, count;
 
 	for (i = 0; i < I915_NUM_RINGS; i++) {
@@ -1055,7 +1055,7 @@ static void i915_gem_record_rings(struct drm_device *dev,
 		i915_gem_record_active_context(ring, error, &error->ring[i]);
 
 		count = 0;
-		list_for_each_entry(request, &ring->request_list, list)
+		list_for_each_entry_safe(request, tmpreq, &ring->request_list, list)
 			count++;
 
 		error->ring[i].num_requests = count;
@@ -1068,7 +1068,7 @@ static void i915_gem_record_rings(struct drm_device *dev,
 		}
 
 		count = 0;
-		list_for_each_entry(request, &ring->request_list, list) {
+		list_for_each_entry_safe(request, tmpreq, &ring->request_list, list) {
 			struct drm_i915_error_request *erq;
 
 			erq = &error->ring[i].requests[count++];
@@ -1088,17 +1088,17 @@ static void i915_gem_capture_vm(struct drm_i915_private *dev_priv,
 				const int ndx)
 {
 	struct drm_i915_error_buffer *active_bo = NULL, *pinned_bo = NULL;
-	struct drm_i915_gem_object *obj;
-	struct i915_vma *vma;
+	struct drm_i915_gem_object *obj, *tmpobj;
+	struct i915_vma *vma, *tmpvma;
 	int i;
 
 	i = 0;
-	list_for_each_entry(vma, &vm->active_list, mm_list)
+	list_for_each_entry_safe(vma, tmpvma, &vm->active_list, mm_list)
 		i++;
 	error->active_bo_count[ndx] = i;
 
-	list_for_each_entry(obj, &dev_priv->mm.bound_list, global_list) {
-		list_for_each_entry(vma, &obj->vma_list, vma_link)
+	list_for_each_entry_safe(obj, tmpobj, &dev_priv->mm.bound_list, global_list) {
+		list_for_each_entry_safe(vma, tmpvma, &obj->vma_list, vma_link)
 			if (vma->vm == vm && vma->pin_count > 0)
 				i++;
 	}
@@ -1128,10 +1128,10 @@ static void i915_gem_capture_vm(struct drm_i915_private *dev_priv,
 static void i915_gem_capture_buffers(struct drm_i915_private *dev_priv,
 				     struct drm_i915_error_state *error)
 {
-	struct i915_address_space *vm;
+	struct i915_address_space *vm, *tmpvm;
 	int cnt = 0, i = 0;
 
-	list_for_each_entry(vm, &dev_priv->vm_list, global_link)
+	list_for_each_entry_safe(vm, tmpvm, &dev_priv->vm_list, global_link)
 		cnt++;
 
 	error->active_bo = kcalloc(cnt, sizeof(*error->active_bo), GFP_ATOMIC);
@@ -1155,7 +1155,7 @@ static void i915_gem_capture_buffers(struct drm_i915_private *dev_priv,
 		error->pinned_bo = NULL;
 		error->pinned_bo_count = NULL;
 	} else {
-		list_for_each_entry(vm, &dev_priv->vm_list, global_link)
+		list_for_each_entry_safe(vm, tmpvm, &dev_priv->vm_list, global_link)
 			i915_gem_capture_vm(dev_priv, error, vm, i++);
 
 		error->vm_count = cnt;
