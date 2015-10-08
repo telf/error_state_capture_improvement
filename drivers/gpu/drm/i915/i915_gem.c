@@ -2704,9 +2704,9 @@ void i915_gem_request_cancel(struct drm_i915_gem_request *req)
 struct drm_i915_gem_request *
 i915_gem_find_active_request(struct intel_engine_cs *ring)
 {
-	struct drm_i915_gem_request *request;
+	struct drm_i915_gem_request *request, *tmpreq;
 
-	list_for_each_entry(request, &ring->request_list, list) {
+	list_for_each_entry_safe(request, tmpreq, &ring->request_list, list) {
 		if (i915_gem_request_completed(request, false))
 			continue;
 
@@ -5121,8 +5121,9 @@ unsigned long i915_gem_obj_size(struct drm_i915_gem_object *o,
 
 bool i915_gem_obj_is_pinned(struct drm_i915_gem_object *obj)
 {
-	struct i915_vma *vma;
-	list_for_each_entry(vma, &obj->vma_list, vma_link) {
+	struct i915_vma *vma, *tmpvma;
+
+	list_for_each_entry_safe(vma, tmpvma, &obj->vma_list, vma_link) {
 		if (!vma)
 			continue;
 
