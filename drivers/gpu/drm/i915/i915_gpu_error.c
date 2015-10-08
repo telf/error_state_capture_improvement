@@ -691,8 +691,16 @@ unwind:
 static void capture_bo(struct drm_i915_error_buffer *err,
 		       struct i915_vma *vma)
 {
-	struct drm_i915_gem_object *obj = vma->obj;
+	struct drm_i915_gem_object *obj;
 	int i;
+
+	if (WARN_ON(!vma))
+	    return;
+
+	if (WARN_ON(!vma->obj))
+	    return;
+
+	obj = vma->obj;
 
 	err->size = obj->base.size;
 	err->name = obj->base.name;
