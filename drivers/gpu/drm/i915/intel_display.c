@@ -10853,6 +10853,8 @@ static inline void intel_mark_page_flip_active(struct intel_crtc *intel_crtc)
 {
 	/* Ensure that the work item is consistent when activating it ... */
 	smp_wmb();
+	if (!intel_crtc->unpin_work)
+	    return;
 	atomic_set(&intel_crtc->unpin_work->pending, INTEL_FLIP_PENDING);
 	/* and that it is marked active as soon as the irq could fire. */
 	smp_wmb();
@@ -11186,6 +11188,9 @@ static void ilk_do_mmio_flip(struct intel_crtc *intel_crtc)
 		dspcntr &= ~DISPPLANE_TILED;
 
 	I915_WRITE(reg, dspcntr);
+
+	if (!intel_crtc->unpin_work)
+	    return;
 
 	I915_WRITE(DSPSURF(intel_crtc->plane),
 		   intel_crtc->unpin_work->gtt_offset);
