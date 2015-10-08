@@ -1071,6 +1071,19 @@ static void i915_gem_record_rings(struct drm_device *dev,
 		list_for_each_entry_safe(request, tmpreq, &ring->request_list, list) {
 			struct drm_i915_error_request *erq;
 
+			if (WARN_ON(!request || count >= error->ring[i].num_requests)) {
+				/*
+				 * If the ring request list was changed in
+				 * between the point where the error request
+				 * list was created and dimensioned and this
+				 * point then just update the num_requests
+				 * field to reflect this.
+				 */
+				error->ring[i].num_requests =
+					min(count, error->ring[i].num_requests);
+				break;
+			}
+
 			erq = &error->ring[i].requests[count++];
 			erq->seqno = request->seqno;
 			erq->jiffies = request->emitted_jiffies;
